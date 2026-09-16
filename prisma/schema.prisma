@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Enums removed for SQLite compatibility (using String defaults instead)
+
+// ─────────────────────────── Models ───────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?  // null = OAuth only
+  nickname     String   @unique
+  fullName     String?
+  avatarUrl    String?
+  bio          String?
+  website      String?
+  role         String   @default("USER")
+  isVerified   Boolean  @default(false)
+  provider     String?  // "google" | "kakao" | "naver"
+  providerId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  posts            Post[]
+  comments         Comment[]
+  likes            Like[]
+  sentMessages     Message[]      @relation("SentMessages")
+  receivedMessages Message[]      @relation("ReceivedMessages")
+  notifications    Notification[]
+  refreshTokens    RefreshToken[]
+  followers        Follows[]      @relation("following")
+  following        Follows[]      @relation("follower")
+
+  @@unique([provider, providerId])
+  @@index([nickname])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Follows {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  caption   String?  // Instagram 스타일 캡션
+  type      String   @default("FEED") // "FEED" | "REEL"
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  media    Media[]
+  comments Comment[]
+  likes    Like[]
+  tags     PostTag[]
+
+  @@index([type, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model Media {
+  id           String    @id @default(cuid())
+  url          String    // 파일 경로 or URL
+  thumbnailUrl String?   // 비디오 썸네일
+  type         String
+  width        Int?
+  height       Int?
+  duration     Int?      // 비디오 길이(초)
+  order        Int       @default(0)
+  postId       String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String
+  postId    String
+  parentId  String?  // 대댓글
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author  User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("Replies", fields: [parentId], references: [id])
+  replies Comment[] @relation("Replies")
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+}
+
+model Like {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique // "맛집" not "#맛집"
+  posts PostTag[]
+
+  @@index([name])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  senderId   String
+  receiverId String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      String
+  content   String
+  link      String?
+  isRead    Boolean          @default(false)
+  userId    String
+  actorId   String?          // 알림을 유발한 유저 ID
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+}
