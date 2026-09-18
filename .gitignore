@@ -4,27 +4,15 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Dependencies
 node_modules
-
-# Build
 dist
 dist-ssr
-
-# Environment
-.env
 *.local
 
-# Database
-prisma/*.db
-prisma/*.db-journal
-
-# Uploads (user media - don't commit actual files)
-uploads/*
-!uploads/.gitkeep
-
-# Editor
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -35,11 +23,7 @@ uploads/*
 *.sln
 *.sw?
 
-# TypeScript
-*.tsbuildinfo
-
-# Scratch & Temporary test files
-test*.json
-bing_dump.html
-restore_explore.cjs
-task.md
+# Environment variables
+.env
+.env.*
+!.env.example
